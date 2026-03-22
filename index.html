@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Slack Work Dashboard v5 - 박관우</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#1a1a2e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Slack Dash">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;min-height:100vh}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Noto Sans KR',sans-serif;background:#0d0d12;color:#e0e0e0;font-size:14px;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+.header{position:sticky;top:0;z-index:100;background:#1a1a2e;padding:12px 16px;border-bottom:1px solid #2a2a4a;display:flex;justify-content:space-between;align-items:center}
+.header-left{flex:1}
+.header h1{font-size:16px;font-weight:700;color:#fff}
+.header .sub{font-size:11px;color:#888;margin-top:2px}
+.btn-update{background:#4a3f8a;color:#fff;border:none;border-radius:10px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;display:flex;align-items:center;gap:5px;transition:all .2s}
+.btn-update:hover{background:#6b5ecf}
+.btn-update.loading{opacity:0.6;pointer-events:none}
+.btn-update .spin{display:inline-block;animation:spin 1s linear infinite}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+.mt-wrap{display:flex;overflow-x:auto;gap:6px;padding:8px 16px;background:#12121e;border-bottom:1px solid #2a2a4a;-webkit-overflow-scrolling:touch}
+.mt-wrap::-webkit-scrollbar{display:none}
+.mt{padding:8px 16px;border-radius:20px;font-size:13px;font-weight:600;white-space:nowrap;cursor:pointer;background:#1a1a2e;color:#888;border:1px solid #2a2a4a;transition:all .2s;position:relative}
+.mt.active{background:#4a3f8a;color:#fff;border-color:#6b5ecf}
+.mt .badge{position:absolute;top:-4px;right:-4px;background:#e74c3c;color:#fff;font-size:10px;font-weight:700;padding:1px 5px;border-radius:10px;min-width:16px;text-align:center}
+.st-wrap{display:flex;overflow-x:auto;gap:4px;padding:6px 16px;background:#0d0d12;-webkit-overflow-scrolling:touch}
+.st-wrap::-webkit-scrollbar{display:none}
+.st{padding:6px 12px;border-radius:14px;font-size:12px;white-space:nowrap;cursor:pointer;background:transparent;color:#666;border:1px solid #333;transition:all .2s}
+.st.active{background:#2d2855;color:#c4b5fd;border-color:#6b5ecf}
+.tp{display:none;padding:12px 16px}
+.tp.active{display:block}
+.card{background:#1a1a2e;border-radius:12px;padding:14px;margin-bottom:10px;border:1px solid #2a2a4a;position:relative}
+.card.done{opacity:0.4;max-height:70px;overflow:hidden;transition:all .3s;position:relative}
+.btn-undo{position:absolute;top:50%;right:14px;transform:translateY(-50%);background:#e74c3c;color:#fff;border:none;border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;z-index:10;display:none;transition:all .2s}
+.btn-undo:hover{background:#c0392b}
+.card.done .btn-undo{display:block}
+.card-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px}
+.card-sender{font-weight:700;color:#c4b5fd;font-size:13px}
+.card-ch{font-size:11px;color:#666;margin-top:2px}
+.card-date{font-size:11px;color:#555;white-space:nowrap}
+.card-title{font-size:13px;color:#ddd;margin-bottom:8px;line-height:1.5}
+.card-title a{color:#7c9aed;text-decoration:none}
+.card-title a:hover{text-decoration:underline}
+.card-actions{display:flex;gap:6px;margin-top:8px}
+.btn-done,.btn-prog{padding:5px 12px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;border:none;transition:all .2s}
+.btn-done{background:#1e6e3e;color:#6ee7a0}
+.btn-done:hover{background:#257a48}
+.btn-prog{background:#5c4a1e;color:#f0c040}
+.btn-prog:hover{background:#6e5922}
+.og-toggle{font-size:11px;color:#7c9aed;cursor:pointer;margin-top:8px;display:inline-block;user-select:none}
+.og-toggle:hover{text-decoration:underline}
+.og-content{display:none;margin-top:8px}
+.og-content.show{display:block}
+.og{background:#13131f;border-left:3px solid #4a3f8a;padding:10px 12px;border-radius:6px;margin-bottom:6px;font-size:12px;color:#bbb;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.og .sender{color:#c4b5fd;font-weight:600;font-size:11px}
+.og .ts{color:#555;font-size:10px;margin-left:6px}
+.rp{background:#13131f;border-left:3px solid #2d5a8a;padding:10px 12px;margin-left:16px;border-radius:6px;margin-bottom:4px;font-size:12px;color:#aaa;line-height:1.6;white-space:pre-wrap;word-break:break-word}
+.rp .sender{color:#7cb5ed;font-weight:600;font-size:11px}
+.rp .ts{color:#555;font-size:10px;margin-left:6px}
+.filter-bar{display:flex;gap:6px;padding:8px 16px;align-items:center}
+.filter-bar label{font-size:11px;color:#888;cursor:pointer}
+.filter-bar input[type=checkbox]{accent-color:#6b5ecf;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="header">
+<div class="header-left">
+<h1>Slack Work Dashboard</h1>
+<div class="sub">박관우 &middot; 2026-03-22 (토) &middot; v5 &middot; 최근 1주 (3/16~3/22)</div>
+</div>
+<button class="btn-update" id="btnUpdate" onclick="triggerUpdate()">&#x21bb; Update</button>
+</div>
+
+<div class="mt-wrap" id="mainTabs">
+<div class="mt active" data-tab="제품" onclick="switchMain(this)">제품<span class="badge" id="badge-제품"></span></div>
+<div class="mt" data-tab="운영" onclick="switchMain(this)">운영<span class="badge" id="badge-운영"></span></div>
+<div class="mt" data-tab="영업" onclick="switchMain(this)">영업<span class="badge" id="badge-영업"></span></div>
+<div class="mt" data-tab="데이터요청" onclick="switchMain(this)">데이터 요청<span class="badge" id="badge-데이터요청"></span></div>
+<div class="mt" data-tab="기타" onclick="switchMain(this)">기타<span class="badge" id="badge-기타"></span></div>
+</div>
+
+<div class="filter-bar">
+<input type="checkbox" id="hideDone" onchange="toggleHideDone()">
+<label for="hideDone">완료 항목 숨기기</label>
+</div>
+
+<!-- ===== 제품 TAB ===== -->
+<div class="tp active" id="tab-제품">
+<div class="st-wrap">
+<div class="st active" data-st="all" onclick="switchSub(this,'제품')">전체</div>
+<div class="st" data-st="mention" onclick="switchSub(this,'제품')">나를 멘션</div>
+<div class="st" data-st="mytag" onclick="switchSub(this,'제품')">내가 태깅</div>
+<div class="st" data-st="group" onclick="switchSub(this,'제품')">그룹 멘션</div>
+<div class="st" data-st="dm" onclick="switchSub(this,'제품')">DM</div>
+<div class="st" data-st="etc" onclick="switchSub(this,'제품')">기타</div>
+</div>
+<div class="card-list" id="list-제품">
+
+<!-- P1: 이혜린 - 주요 지표 대시보드 -->
+<div class="card" data-cat="제품" data-sub="mention" data-id="p1">
+<div class="card-top"><div><span class="card-sender">이혜린</span><div class="card-ch">#채대사-full-team</div></div><div class="card-date">3/20 (목) 10:43</div></div>
+<div class="card-title">주요 지표 모니터링 대시보드 v0.1 공유 &middot; 매출 지표 태블로 &middot; 분석DB 추가 차주 - <a href="https://jobkorea-linker.slack.com/archives/C0AKHCKMG4W/p1773971026099209" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (4개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">이혜린</span><span class="ts">3/20 10:43</span>
+@박관우 님, 요청하셨던 주요 지표 모니터링 대시보드 1차 공유드립니다.
+신규 CPH 상품 주요 지표 모니터링 대시보드 v0.1 (메타베이스 링크)</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/20</span>
+1. 중요도 상 지표 중 없는 건 내부적으로 직접 작업 가능한 수준이라 내부 소화 필요합니다.
+2. 매출 지표는 메타베이스에서 불가하여 태블로로 작업해야하며, 제가 직접 작업하고 태블로 대시보드로 공유드리겠습니다.
+3. 알바몬 하이어 지원자/발송 관련된 건은 분석 DB 추가 작업이 들어가야해서 차주중 전달해주신다고 합니다.</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/20</span>
+@배소정 님, 260310_CRM 데이터 대쉬보드 수정_v2.xlsx 위 파일 중 현재 대시보드에 없는 항목이 있습니다.
+1. 간접 성과 지표 대쉬보드-CRM 전체
+2. 가드레일 지표 대쉬보드-CRM Off 비중
+3. 가드레일 지표 대쉬보드-인당 CRM</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+@이혜린 @배소정 소정님, 이거 맨 앞에 좀 분류좀 해주실래요? 도마정리좀 하고 갑시다. 항목이 너무 많아서 헷갈려요.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+클로드에 시키면 자동으로 넣어줄게요 시키기 ㄱ</div>
+</div>
+</div>
+
+<!-- P2: 정은서 - 합격축하금 -->
+<div class="card" data-cat="제품" data-sub="mention" data-id="p2">
+<div class="card-top"><div><span class="card-sender">정은서</span><div class="card-ch">#채대사-full-team</div></div><div class="card-date">3/17~3/20</div></div>
+<div class="card-title">합격축하금 1-pager 초안 &middot; 과금구조(합격자당) &middot; 입소 시기 논의 - <a href="https://jobkorea-linker.slack.com/archives/C0AKHCKMG4W/p1774001949456169" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (10개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/17</span>
+은서님, 합격금 이벤트는 이제 예산을 제가 슬슬 받으려고 합니다. 금주 금요일 or 차주 월요일까지 합격금 이벤트가 뭔 짓거리 하려는 건지 노션 one-page가 필요합니다.</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/17</span>
+타 작업으로 인해 확인이 늦었네요. 말씀주신 듀데이트까지 진행가능합니다.</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/17</span>
+합격축하금 이벤트가 합격자마다 과금하는 구조가 아닐 수 있어서 보류한다고 하셨는데, 우선 진행한다고 생각하고 작업하면 될까요? 주요 약관도 합격자당 과금 구조를 전제 하에 작성하면 될까요?</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/17</span>
+관련해서, 기획 및 개발도 진행 여부가 정해지는대로 이어서 작업하면되니 말씀주시면 감사하겠습니다.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/18</span>
+1. 일단 진행 / 합격자당 과금구조로 일단 가정
+2. 주는 시기는 입소로 해야할것 같음; 도급사가 잔존안된다고 야랄야랄 하는게 쌩각보다 너무쎔; 토닥토닥이는 조치해줘야할 것 같음</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/19</span>
+원래 합격으로 할려고헀다가 양보한거고, 1달만근른 구직자가 너무 싫어할것 같아요</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/18</span>
+1. 문의 넣어둔 상태고, 아직 답장은 없어서 좀 더 기다려본 후에 전화드리면 될 것 같습니다
+2. 주는 시기가 입소라고 한다면, 교육 이수 여부와는 상관없이 교육 당일에 참석만 하면 주겠다는 의미 맞을까요?</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/19</span>
+ㅇㅇㅇ</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/20 19:19</span>
+@박관우 님, 합격축하금 1-pager 초안 전달드립니다. 기존에 기획해둔 내용과 상품 운영 계획 PPT를 바탕으로 작성하였고, 지표 및 Pre-mortem 등의 내용은 보충이 필요합니다! 초안이니 수정할 내용이 있다는 점을 감안하여 봐주시고, 차주 월요일에 더 디벨롭할 예정이니 참고 부탁드립니다!</div>
+</div>
+</div>
+
+<!-- P3: 이여원 - 인식개선 페이지 -->
+<div class="card" data-cat="제품" data-sub="mention" data-id="p3">
+<div class="card-top"><div><span class="card-sender">이여원</span><div class="card-ch">#채대사-full-team</div></div><div class="card-date">3/20 (목) 16:13</div></div>
+<div class="card-title">인식개선 페이지 인터뷰 결과(5명) &middot; PRD 초안 공유 &middot; 네이버페이 5만원 발송 절차 문의 - <a href="https://jobkorea-linker.slack.com/archives/C0AKHCKMG4W/p1773990815778959" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (6개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">이여원</span><span class="ts">3/20 16:13</span>
+@박관우, @이혜린 님, 안녕하세요! 인식 개선 페이지 구직자 인터뷰 결과와 PRD(1-pager) 초안 공유드립니다.
+1. 콜센터 근무자 인터뷰 완료: 3/19~3/20 총 5명 대상(실무자3, 직책자2). 오해와 진실/채용TIP 내용 모두 확보.
+추가로 참여자 대상 네이버페이 5만원 발송 필요. 소속 변경으로 품의 절차 문의.
+2. PRD 초안 작성 공유. Metrics/Pre-mortem 부분 같이 검토 부탁. (cc.@황정주)</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/20</span>
+여원님, 고생 많으셨습니다! 인터뷰 참여자 대상 보상 발송은 @노시현 님께서 같이 챙겨주시겠어요?</div>
+<div class="rp"><span class="sender">노시현</span><span class="ts">3/20</span>
+넵 확인했습니다. @이여원 님, 인터뷰 진행하신 5분에 대해 네이버페이 5만원권 발송 대행 요청하겠습니다. 혹시 보상 언제까지 발송될 예정이라고 안내된 일정이 있을까요??</div>
+<div class="rp"><span class="sender">이여원</span><span class="ts">3/20</span>
+도움주셔서 감사드립니다 시현님! 우선 2주 내(4/3)로 안내드렸습니다.</div>
+<div class="rp"><span class="sender">노시현</span><span class="ts">3/20</span>
+넵 확인했습니다. 발송하면 여원님께도 공유드릴게요!</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+여원님 감사합니다!</div>
+</div>
+</div>
+
+<!-- P4: 배소정 - 유베이스 소통 -->
+<div class="card" data-cat="제품" data-sub="mention" data-id="p4">
+<div class="card-top"><div><span class="card-sender">배소정</span><div class="card-ch">#채대사-operation-team</div></div><div class="card-date">3/20 (목) 15:25</div></div>
+<div class="card-title">유베이스 소통사항 &middot; 나인하이어 엑셀 다운로드 &middot; 학력사항 가변 출력 조치 요청 - <a href="https://jobkorea-linker.slack.com/archives/C0A7AKSQM8B/p1773987950512169" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (8개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">배소정</span><span class="ts">3/20 15:25</span>
+@이혜린 님, @박관우 님, 유베이스 소통 사항 공유드립니다. 유베이스 측에서 나인하이어에서 엑셀 다운로드 받아서 지원자 받기로 했습니다. 학력 사항에 대해서도 엑셀 다운시에 가변적으로 출력되어 이 부분도 조치 부탁한다고 전달. 노션 도급사 소통 사항에 정리해 두었습니다.</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/20</span>
+현재 나인하이어에 해당 기능은 없어서 개발 요청 필요. 요구사항 노션에 정리해서 공유 부탁.</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/20</span>
+넵 노션 '도급사 소통 총 정리'에 '나인하이어 이용 관련'란에 추가해둘게요</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/20</span>
+@이혜린 님, 노션에 어느정도 정리 되었습니다. 유베이스에서 해당 기능 생기기 전에는 기존 방식으로 지원자를 전달 받고 싶다고 하시는데 어떻게 하는게 좋을까요?</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+@배소정 @정은서 어차피 도급사 요청이 piece by piece로 너무 많이 오잖아요. 도마 사령관이랑 소통 사례관이 쫙 정리해주세요 (노션에 페이지 추가해주십쇼)</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/20</span>
+나인하이어 문의 내용 관련해서 구두 얘기한 것 포함 코멘트 드렸으니 응대에 참고 부탁드릴게요!</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/20</span>
+넵 감사합니다!</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/20</span>
+소통하느라 고생 많으셨어요 소정님!</div>
+</div>
+</div>
+
+<!-- P5: 정창하 - CRM 발송 -->
+<div class="card" data-cat="제품" data-sub="mention" data-id="p5">
+<div class="card-top"><div><span class="card-sender">정창하</span><div class="card-ch">#채대사-operation-team</div></div><div class="card-date">3/20 (목)</div></div>
+<div class="card-title">CRM 발송 계획 보고 &middot; 발송건수 다수 리마인드 - <a href="https://jobkorea-linker.slack.com/archives/C0A7AKSQM8B/p1773994543599859" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (2개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">정창하</span><span class="ts">3/20 16:32</span>
+@박관우 님, 보고드립니다. (CRM 발송 계획)</div>
+<div class="rp"><span class="sender">정창하</span><span class="ts">3/20 17:15</span>
+@박관우 님, 오늘 발송 계획 건수 많아 다시 리마인드 드립니다.</div>
+</div>
+</div>
+
+<!-- P6: 박관우→배소정,정창하 활성회원 -->
+<div class="card" data-cat="제품" data-sub="mytag" data-id="p6">
+<div class="card-top"><div><span class="card-sender">박관우 → 배소정, 정창하</span><div class="card-ch">#채대사-operation-team</div></div><div class="card-date">3/19~3/20</div></div>
+<div class="card-title">활성회원수 &middot; 로그인회원수 &middot; 알림톡on &middot; 비로그인 회원 확인 &middot; 메타베이스 SQL - <a href="https://jobkorea-linker.slack.com/archives/C0A7AKSQM8B/p1773899547061139" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (14개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/19</span>
+@배소정 @정창하 소정님은 활성회원 double check 다 되는대로 &amp; 창하님은 카카오톡 1개월 이내 30만명 이내인지 확인하는 대로 알려주세요 (제일 급함)</div>
+<div class="rp"><span class="sender">정창하</span><span class="ts">3/19</span>
+@박관우 님, 메타베이스로 2026년 2월 20일 이후 접속자 중 개인정보 동의 &amp; 알림톡 동의한 사람 수 뽑았습니다.</div>
+<div class="rp"><span class="sender">노시현</span><span class="ts">3/19</span>
+@배소정 님, 쿼리 아래로 뽑으면 58만 정도 나오는데 참고해주세요.</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/20</span>
+@박관우 님, 결과 먼저 공유 드립니다. (활성 회원수, 제트 알림톡 on 회원수)</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/20</span>
+@박관우 님, 로그인 회원, 활성 회원, 제트 알림톡 on 회원수 — 2025년 10월 이전 데이터 DB에 존재 x</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+25년 10월 이전 데이터 &gt;&gt;&gt; 혜린님꼈 좀 물어봐줘요 @배소정. 제가 1년 정도는 시계열로 보고 싶어서 그래요</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/20</span>
+로그인회원수/활성회원수는 불러와지지만, 알림톡 on 회원수가 불러와 지지 않아서 확인 후에 다시 공유 드리겠습니다.</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/20</span>
+@이혜린 님, 제트 알림톡 on 회원수가 메타베이스상 2025년 10월 이전에 받아와지지 않는데, sid_am_user_snapshot DB에서 다른 값으로 받아올 수 있는지 확인 부탁드립니다.</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/20</span>
+로그성 데이터를 쌓는거라 25년 10월부터 쌓고 이후에 더 필요하면 조금씩 늘리는 것으로 이야기 되었습니다. 1년 더 필요하시면 요청드려야 할 듯해요. 제가 요청하고 소정님도 태그 드릴테니 팔로업 부탁.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+@배소정 깔끔히 잘 해주셨네요 감사합니다. 여기 비로그인 회원은 저희 tracking 못하나요?</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+내일 콜센터 1회 이상도 부탁해요</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/20 15:20</span>
+@박관우 님, 확인 결과 비로그인 회원수가 세자리수(1000명 미만) 이어서 큰 의미가 없을 것 같습니다.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+오키 감사</div>
+</div>
+</div>
+
+<!-- P7: 이혜린 - 알림톡 문구 -->
+<div class="card" data-cat="제품" data-sub="mention" data-id="p7">
+<div class="card-top"><div><span class="card-sender">이혜린</span><div class="card-ch">#채대사-full-team</div></div><div class="card-date">3/19 (수)</div></div>
+<div class="card-title">알림톡 추천 제안 문구 법률 검토 &middot; 수신 대상 ~120만명 - <a href="https://jobkorea-linker.slack.com/archives/C0AKHCKMG4W/p1773909646132929" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (9개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">이혜린</span><span class="ts">3/19 17:40</span>
+*[알림톡 내 추천 제안 문구 노출 법률 검토 건]*
+@박관우(Enterprise Service팀) @정은서(Enterprise Service팀)</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/19 17:40</span>
+검토요청하신 문구는 구직자의 지원을 적극적으로 유도하기 위한 *설득적인 표현*을 포함하고 있어 광고성 정보로 해석될 소지가 높습니다.
+KISA의 [불법스팸 방지를 위한 정보통신망법 안내서]에 따르면 수신자의 서비스 이용을 유도하는 문구가 포함될 경우 "영리목적의 광고성 정보"로 분류됩니다.
+
+해당 리스크를 피하시려면 문구를 시스템 데이터에 기반한 객관적인 사실만 안내하는 형태로 변경이 필요합니다.
+예시)
+&middot; 회원님께서 등록하신 이력서의 OOO키워드와 일치하는 비대면 사무직 공고입니다.
+&middot; 회원님이 설정하신 희망 근무조건(오전9시~오후6시, 주말 휴무)에 부합하는 채용공고입니다.</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/19 17:45</span>
+메일 보셨겠지만, 현재 우리가 쓰는 문구로는 어렵다는 결론입니다.
+
+어차피 조만간 받은 제안 화면 배포해서 제안 문구 노출이 어느정도 해결 될 것으로 보입니다.
+(제안 문구 노출이 정말 전환율에 도움되니? 라는 A/B Test도 실행 예정)
+
+따라서 절충하여, 알림톡에는 보안팀 제안처럼 무슨 정보가 매칭되어 추천했는지 정도로 보강해보면 어떨까합니다.
+
+위 액션 시,
+1. 어떤 타겟으로 발송했는지 변수처리해서 넣을 수 있어야함
+2. 변수를 어디에서 끌어올건지 또는 추가할 건지 고민 후 구현해야함</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/19 17:47</span>
+cc. @박상수(HiringCenter Eng팀)
+같이 고민해주시면 좋을 듯해서 간단히 맥락 설명 드립니다!
+
+현재 알림톡 템플릿에는 공고 정보도 제안 문구도 안들어가 있어, 후킹을 위해 이런 것들을 넣고 싶습니다.
+
+다만 이런거 넣으면 광고성 메시지로 판단되어 못넣고 있었고, 보안팀에 추천 사유라도 넣으면 안될지 문의드렸습니다.
+
+그 답변이 첫번째 내용입니다.</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/19 18:01</span>
+광고성에 걸리지 않는 선에서, 매칭 정보 중 후킹될 수 있는 요소를 넣어 메시지를 다시 짜봐야겠네요. 저도 고민해보겠습니다!</div>
+<div class="rp"><span class="sender">박상수</span><span class="ts">3/19 18:03</span>
+보통 이럴때요.. 저희 mem_sys_no 로 하잖아요.
+보통 다른데는 엑셀로 업로드를 하구요. 그리고 변수 컬럼을 둬서 거기에 맵핑해서 들어가게 해요.</div>
+<div class="rp"><span class="sender">박상수</span><span class="ts">3/19 18:04</span>
+"회원님께서 등록하신 이력서의 {변수1}키워드와 일치하는 비대면 사무직 공고입니다."</div>
+<div class="rp"><span class="sender">박상수</span><span class="ts">3/19 18:05</span>
+물론 이력서에서 끌고 오면 좋은데 그럼 템플릿 + 이력서 or 특정 조건이 너무 강결합이 되서, 문구를 바꾸려고 할때 오히려 잘 안되거든요, 그런데 템플릿은 보통 더 유연하게 쓰려구 하고요..
+
+그래서 보통 변수 처리해서 등록해요</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/19 18:07</span>
+말씀해주신 방식으로 한다면 메타베이스에서 멤시스넘버 추출할때, 필요한 변수 같이 추출해서 엑셀에 넣으면 될듯해요!
+다만 멤시스넘버를 엑셀로 업로드할 수 있도록 하는 개발이 선행되어야할 것 같은데 맞을까요?</div>
+</div>
+</div>
+
+<!-- P8: 박상수 - 뿌리오 -->
+<div class="card" data-cat="제품" data-sub="mention" data-id="p8">
+<div class="card-top"><div><span class="card-sender">박상수</span><div class="card-ch">#채대사-full-team</div></div><div class="card-date">3/19 (수)</div></div>
+<div class="card-title">뿌리오 알림톡 가격 확인 &middot; 발송량 증가로 할인 협상 가능 - <a href="https://jobkorea-linker.slack.com/archives/C0AKHCKMG4W/p1773909969193489" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 보기</span>
+<div class="og-content">
+<div class="og"><span class="sender">박상수</span><span class="ts">3/19 17:46</span>
+나중에 시간 되면 뿌리오쪽 알림톡 가격확인해보고, 저희 발송량 많이 늘어서, 깎아달라고 쇼부쳐도 좋을거 같습니다. 작년대비 많이 늘었네요. 앞으로 더 많이 늘꺼고.
+
+안깎아주면 다른데 쓴다고 하면 되요. @박관우(Enterprise Service팀) @이혜린(Enterprise Service팀)
+[첨부: 스크린샷 6장]</div>
+</div>
+</div>
+
+<!-- P9: 노시현 - 그룹DM 스크럼 -->
+<div class="card" data-cat="제품" data-sub="group" data-id="p9">
+<div class="card-top"><div><span class="card-sender">노시현</span><div class="card-ch">그룹DM (혜린&middot;상수&middot;시현&middot;창하&middot;소정)</div></div><div class="card-date">3/20 (목) 15:57</div></div>
+<div class="card-title">스크럼 일정 확인 &mdash; "관우님 언제 하실 계획이신가요??" - <a href="https://jobkorea.enterprise.slack.com/archives/C0AMPBNNB9T/p1773989844494719" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 보기</span>
+<div class="og-content">
+<div class="og"><span class="sender">노시현</span><span class="ts">3/20 15:57</span>
+스크럼 아직 안 했습니당.. 은서님 인터뷰가 5시로 옮겨져서 5시 전에 해야 될 거 같은데 @박관우 님, 언제 하실 계획이신가요??</div>
+</div>
+</div>
+
+<!-- P10: 조선영 DM -->
+<div class="card" data-cat="제품" data-sub="dm" data-id="p10">
+<div class="card-top"><div><span class="card-sender">조선영</span><div class="card-ch">DM</div></div><div class="card-date">3/17~3/19</div></div>
+<div class="card-title">조직비/인턴 관련 &middot; FST one-pager 자료공유 &middot; 하이어링센터 싱크 - <a href="https://jobkorea.enterprise.slack.com/archives/D0AJSKY3RQC" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (4개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/19 16:24</span>
+선영님 안녕하세요! 하나 여쭤볼게 있어서 연락드립니다.
+(1) 혹시 저희 FST 인원당 4만원씩 조활비가 나오는지요?
+(2) 그리고 PO를 팀장으로 인식해서 20만원씩 추가 지급되는지요?
+초반에 팀 빌딩 차원에서 조활비를 쓰고 싶어 여쭙습니다!</div>
+<div class="rp"><span class="sender">조선영</span><span class="ts">3/17 16:03</span>
+안녕하세요 관우님! 넵 공유 감사합니다! 하이어링센터랑 어떻게 싱크 맞출지는 고민하고 말씀드릴게요!</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/17 15:50</span>
+선영님, 어제 말씀 드린 자료 공유 드립니다. 감사합니다!
+1. 채대사 FST에서 하고 있는 일 (PPT 1~39페이지)
+2. Weekly PPP 노션 공유</div>
+</div>
+</div>
+
+<!-- P11: 한지우 DM -->
+<div class="card" data-cat="제품" data-sub="dm" data-id="p11">
+<div class="card-top"><div><span class="card-sender">한지우</span><div class="card-ch">DM</div></div><div class="card-date">3/17~3/20</div></div>
+<div class="card-title">Elastic Search Q&amp;A &middot; 비회원 지원 집계 &middot; guardrail 지표 피드백 (Mix기준 인당지원수, 전환율) - <a href="https://jobkorea.enterprise.slack.com/archives/D0AMDHJDAE5" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (7개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/19 16:58</span>
+지우님, PPP에서 나온 내용으로 팔로우업. (1) 인앱 타겟팅 넣으면 기존 공고 지원자 뺏길 수 있다 (2) 가드레일 지표만 관우-지우간 잘 설정했으면 좋겠다고 승호님 의견 (3) 가드레일 지표에 대해 의견 주시면 감사하겠습니다 (노션 draft 링크 공유)</div>
+<div class="rp"><span class="sender">한지우</span><span class="ts">3/19 20:45</span>
+관우님 제가 이거 본다하고 놓쳤는데, 내일 오전까지 검토하고 말씀드릴게요!</div>
+<div class="rp"><span class="sender">한지우</span><span class="ts">3/20 16:23</span>
+전반적으로 방향은 동의합니다. 다만 두 가지 의견:
+1. Mix기준 인당 지원수: 비콜센터 인당 지원수가 실험 전 대비 -10% 이상 하락시 red flag 같은 식으로 수치 기준을 미리 합의해두면 어떨까요?
+2. 전환율: 인앱 타겟팅은 push, 기존 공고 리스트는 pull(유저 능동 탐색) 방식이라 성격이 달라서 기존 공고 전체 CVR을 그대로 기준으로 삼으면 정확한 비교가 어려울 것 같아요.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/17 13:15</span>
+지우님, 멍청 질문이긴 한데 배워가고 있어서 여쭤봅니다 ㅠㅠ
+1. 혹시 아까 말씀 주신 엘라스틱이라는게 무엇인가요..?
+2. 비회원도 저희 지원이 가능한가요?</div>
+<div class="rp"><span class="sender">한지우</span><span class="ts">3/17 13:21</span>
+1. 검색엔진인데요! 대량의 데이터를 빠르게 검색·정렬할 수 있도록 설계된 오픈소스 분산 검색 시스템이고, 알바몬처럼 공고 리스팅을 실시간으로 보여줘야 하는 서비스에서 많이 씁니다.
+2. 비회원도 지원이 가능합니다! 홈페이지/전화 지원 가능하고 현재 문자지원도 개선중. DMP 데이터를 통해 비회원 지원도 집계중인데 현재는 홈페이지 지원만 집계됨, 전화지원도 집계되게끔 요청드리려고 해요 ㅎㅎ</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/17 13:34</span>
+감사합니다! 지우님 혹시 부스팅 = 랭킹 알고리즘 바꾼다라고 생각하면 될까요?</div>
+<div class="rp"><span class="sender">한지우</span><span class="ts">3/17 13:35</span>
+넵!! 이 문서 참고해주시면 됩니다. (노션 링크)</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- ===== 운영 TAB ===== -->
+<div class="tp" id="tab-운영">
+<div class="st-wrap">
+<div class="st active" data-st="all" onclick="switchSub(this,'운영')">전체</div>
+<div class="st" data-st="mention" onclick="switchSub(this,'운영')">나를 멘션</div>
+<div class="st" data-st="mytag" onclick="switchSub(this,'운영')">내가 태깅</div>
+<div class="st" data-st="dm" onclick="switchSub(this,'운영')">DM</div>
+<div class="st" data-st="etc" onclick="switchSub(this,'운영')">기타</div>
+</div>
+<div class="card-list" id="list-운영">
+
+<div class="card" data-cat="운영" data-sub="mytag" data-id="o1">
+<div class="card-top"><div><span class="card-sender">박관우 → 이창준, 방지수</span><div class="card-ch">그룹DM 방지수&middot;이창준</div></div><div class="card-date">3/16~3/20</div></div>
+<div class="card-title">금일 미팅 팔로우업 &middot; 채대사 v3.2 PPT 공유 &middot; 퍼포먼스허브 정의 작업 - <a href="https://jobkorea.enterprise.slack.com/archives/C09LENZH1RS" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (5개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/20 16:16</span>
+[금일 미팅 팔로우업 사항] @이창준</div>
+<div class="rp"><span class="sender">이창준</span><span class="ts">3/17 00:25</span>
+감사합니다 :) 두 분 짱짱 슈퍼짱</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/16 23:54</span>
+창준님, 승호님께 공유드린 파일 fyi로 공유드립니다. 기존에 창준님께 공유한 버전은 outdated라서 하기 버전 참고 바랍니다. (채대사 상품 운영 계획_v3.2.pptx)</div>
+<div class="rp"><span class="sender">방지수</span><span class="ts">3/16 23:38</span>
+@이창준 님, 퍼포먼스허브에 대한 현황 파악은 우선 이 정도의 depth. 내일은 알바몬향으로 뭘 조정하고 바꾸고 새로 만들어야 하는지 뾰족하게 정의하는 작업에 시간을 좀 쓰려고 합니다. 승호님께 EOD로 전달드린 내용 참고차 공유드립니다.</div>
+</div>
+</div>
+
+<div class="card" data-cat="운영" data-sub="etc" data-id="o2">
+<div class="card-top"><div><span class="card-sender">이창준</span><div class="card-ch">#section-전략추진실-all</div></div><div class="card-date">3/20 (목)</div></div>
+<div class="card-title">macro 장표 작성일 리마인더 - <a href="https://jobkorea-linker.slack.com/archives/C08NNP1D3A9" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 보기</span>
+<div class="og-content">
+<div class="og"><span class="sender">Slackbot 리마인더</span><span class="ts">3/20 10:00</span>
+리마인더: 오늘은 macro 장표 찍는 날입니다</div>
+</div>
+</div>
+
+<div class="card" data-cat="운영" data-sub="etc" data-id="o3">
+<div class="card-top"><div><span class="card-sender">이창준</span><div class="card-ch">#wg-전략추진실</div></div><div class="card-date">3/19 (수)</div></div>
+<div class="card-title">사업주진본부 주간 미팅 안건</div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 보기</span>
+<div class="og-content">
+<div class="og"><span class="sender">이창준</span><span class="ts">3/19</span>
+사업추진본부 주간 미팅 안건 공유입니다.</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- ===== 영업 TAB ===== -->
+<div class="tp" id="tab-영업">
+<div class="st-wrap">
+<div class="st active" data-st="all" onclick="switchSub(this,'영업')">전체</div>
+<div class="st" data-st="mention" onclick="switchSub(this,'영업')">나를 멘션</div>
+<div class="st" data-st="mytag" onclick="switchSub(this,'영업')">내가 태깅</div>
+<div class="st" data-st="dm" onclick="switchSub(this,'영업')">DM</div>
+<div class="st" data-st="etc" onclick="switchSub(this,'영업')">기타</div>
+</div>
+<div class="card-list" id="list-영업">
+
+<!-- 엄명용 - TOP5 -->
+<div class="card" data-cat="영업" data-sub="mention" data-id="s1">
+<div class="card-top"><div><span class="card-sender">엄명용</span><div class="card-ch">#prj-hirenow</div></div><div class="card-date">3/20 (목) 09:27</div></div>
+<div class="card-title">TOP5 외 6~20위 도급사 미팅 &middot; 별도 채널 vs 이 방 추가 &middot; 자동화 6월 완성 - <a href="https://jobkorea-linker.slack.com/archives/C09B6UHPQMU/p1773966472429879" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (7개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">엄명용</span><span class="ts">3/20 09:27</span>
+@박관우 TOP5 도급사 이외에 6~20위 도급사 미팅 및 제안 전개 하려고 하는데 Q&amp;A가 있을 것 같아 팀원들을 이 방으로 초대할까 생각중. 별도 채널을 파는게 좋을지 이 방에 추가 하는게 좋을지 의견 부탁합니다.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+명용님 따로 파는게 좋을 것 같습니다.
+• top6~20은 영업팀에게 '미팅 및 제안 전개'를 지시하고 제안하기 전에
+• 저랑 top6~20 영업일정 타임라인은 한번 이야기하고 했으면 합니다.
+  - 제품에서 얼마나 소화할 수 있을지 이야기를 해야 합니다.</div>
+<div class="rp"><span class="sender">엄명용</span><span class="ts">3/20</span>
+네에 6~10 영업 일정 관련해서 오프 또는 덧글로 상의 해요.</div>
+<div class="rp"><span class="sender">엄명용</span><span class="ts">3/20</span>
+일단 제안 전개를 지시 하긴 하였습니다. / 미팅 일정을 잡지는 않음.</div>
+<div class="rp"><span class="sender">엄명용</span><span class="ts">3/20</span>
+3월 말에 자동화 시스템이 개발 되는 것으로 알아서 그 이후면 좀 룸이 생기지 않을까 싶은데 이 부분은 업데이트가 있다면 공유 부탁드려요.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+넵. 자동화는 1차적 완성은 6월 정도로 생각해두시는게 좋을 것 같습니다. (3월 아닙니다). 최종적 완성은 9월에 가까울 것 같습니다.
+• 1차적 완성 정의 = 콜센터는 다 소화할 수 있을 정도</div>
+<div class="rp"><span class="sender">엄명용</span><span class="ts">3/20</span>
+네에 해당 건은 sync맞추어서 하는 것으로 하고 TOP5 + 엘비유세스에 집중을 우선 하겠습니다.</div>
+</div>
+</div>
+
+<!-- 엄명용 - 유베이스 계약서 -->
+<div class="card" data-cat="영업" data-sub="mention" data-id="s2">
+<div class="card-top"><div><span class="card-sender">엄명용</span><div class="card-ch">#prj-hirenow</div></div><div class="card-date">3/20 (목) 09:23</div></div>
+<div class="card-title">유베이스 계약서 문구 &middot; 위탁 운영 명시 여부 &middot; 유베이스 안으로 수용 - <a href="https://jobkorea-linker.slack.com/archives/C09B6UHPQMU/p1773966210636809" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (7개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">엄명용</span><span class="ts">3/20 09:23</span>
+[유베이스 계약서 문구 관련]</div>
+<div class="rp"><span class="sender">엄명용</span><span class="ts">3/20</span>
+메일 보내드리긴 했는데 유베이스안으로 해도 무리 없을지 확인 부탁드려요. 실무 현실(우리가 위탁해서 공고 올리는)을 반영 하지 않아서 좀 그렇긴 한데요.</div>
+<div class="rp"><span class="sender">엄명용</span><span class="ts">3/20</span>
+@박관우 위 건 검토 부탁해요.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+명용님 어차피 둘 다 갑(유베이스)가 자기 공고에 관한 게 제대로 됐는지 책임진다는 말로 이해가 됩니다. 두 문항 차이가 저희에게 가지는 함의가 각각 무엇일지요?</div>
+<div class="rp"><span class="sender">엄명용</span><span class="ts">3/20</span>
+유베이스 안에서 우리가 실무적으로는 위탁을 해서 운영한다는 부분이 명시적이지 않아서요.</div>
+<div class="rp"><span class="sender">엄명용</span><span class="ts">3/20 15:25</span>
+@박관우 일단 유베이스 안으로 수용하는 것으로 하겠습니다.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+넵넵. 어차피 6월쯤 가면 의뢰도 자동으로 올리게 될거라 상관 없을 것 같습니다</div>
+</div>
+</div>
+
+<!-- 정승호 DM -->
+<div class="card" data-cat="영업" data-sub="dm" data-id="s3">
+<div class="card-top"><div><span class="card-sender">정승호</span><div class="card-ch">DM</div></div><div class="card-date">3/16~3/18</div></div>
+<div class="card-title">채대사 상품 운영 계획 v3.2 공유 &middot; 과금 기준 시점 확인 &middot; 연간 로드맵 1pager - <a href="https://jobkorea.enterprise.slack.com/archives/D0AD34FEGFL" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (10개+)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/16 23:51</span>
+승호님, 아까 오후에 잠깐 만나서 말씀 드린 file 공유 드립니다. (채대사 상품 운영 계획_v3.2.pptx)
+• 장기적인 계획 / item 뭐할지 / 각각 item별 우선순위 (11~21페이지)
+• 2Q 목표/로드맵 (25~28페이지, 아직 완전 draft)</div>
+<div class="rp"><span class="sender">정승호</span><span class="ts">3/17 00:15</span>
+네 관우님 수고 많으셨습니다. 읽고 피드백 준비하겠습니다. 감사합니다!</div>
+<div class="rp"><span class="sender">정승호</span><span class="ts">3/17 21:11</span>
+관우님, 채대사 프로덕트 연간 로드맵이 혹시 한장짜리 장표나 엑셀로 제작된 것이 있나요?</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/17 21:23</span>
+한장 짜리 로드맵은 없습니다. 다만, v3.2파일에서 로드맵은 수립해놨습니다. 26~28페이지 보시면 됩니다.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/17 21:47</span>
+승호님 제가 26페이지에 전체 개발 계획 1pager로 붙여놨습니다. 방금 클로드랑 작업하고 &amp; 제가 검수 완료해서 필요하실 것 같아서 만들어놨습니다</div>
+<div class="rp"><span class="sender">정승호</span><span class="ts">3/17 21:48</span>
+엇 저도 돌리고 있었는데 ㅋㅋ 감사합니다!</div>
+<div class="rp"><span class="sender">정승호</span><span class="ts">3/18 12:39</span>
+관우님 안녕하세요, 우리 채대사 과금 기준 시점이 채용 확정시인가요 서류합격, 1차 인터뷰 합격 등인가요?</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/18 12:44</span>
+승호님, 면접 합격 통보 시입니다. (이미지에서 빨간색 부분)
+• 참고) 서류 합격 아닙니다.
+• 인터뷰는 1번 밖에 안봐서 1차 인터뷰도 아닙니다</div>
+</div>
+</div>
+
+<!-- 조강진 DM -->
+<div class="card" data-cat="영업" data-sub="dm" data-id="s4">
+<div class="card-top"><div><span class="card-sender">조강진</span><div class="card-ch">DM</div></div><div class="card-date">3/18~3/19</div></div>
+<div class="card-title">채대사 FST 소개 미팅 요청 &middot; 5층 워킹턴 예약 &middot; 혜린님 PS로 참여 - <a href="https://jobkorea.enterprise.slack.com/archives/D0AN4LQV6DN" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (10개+)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/18 16:37</span>
+@조강진 강진님, 안녕하세요. 채대사 FST PO박관우라고 합니다. 처음 인사 드립니다.
+채대사 FST에서 어떤 문제를 풀려고 하고 &amp; 어떤 걸 하려고 하는지 설명하는 시간을 갖고자 합니다.
+내일 미팅 요청 드립니다. (노션 one-pager도 함께 공유드리겠습니다!)
+• 승호님께 강진님께도 소통드려야 한다는 사실을 전달 받았습니다.</div>
+<div class="rp"><span class="sender">조강진</span><span class="ts">3/18 18:05</span>
+넵넵</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/18 18:21</span>
+감사합니다! 2~6시는 안된다고 생각하면 될까요?</div>
+<div class="rp"><span class="sender">조강진</span><span class="ts">3/18 18:33</span>
+네 오후에는 일정이 있어요 ㅠ</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/18 22:00</span>
+강진님 안녕하세요. 내일 오전 10시에 공유 드릴 '알바몬 하이어 소개 one-pager' 공유 드립니다.
+(노션 링크: 목표/원칙/지표/initiative/로드맵 정리)</div>
+<div class="rp"><span class="sender">조강진</span><span class="ts">3/19 09:32</span>
+관우님 현재 18층에서 업무하고 계신건가요?</div>
+<div class="rp"><span class="sender">조강진</span><span class="ts">3/19 09:33</span>
+5층 워킹턴 잡았구요. PO/TL만 오시면 됩니다.</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/19 09:38</span>
+아닙니다. 5층 작업하고 있습니다. 오히려 좋습니다 ㅎㅎ
+강진님, 상수님 또한 같이 참여시켜도 될지요? 저를 보조해주는 PS 혜린님은 필수참여로 같이 오는게 미팅 생산성을 위해 나을 것 같습니다.</div>
+<div class="rp"><span class="sender">조강진</span><span class="ts">3/19 09:40</span>
+네. 혜린님 초대 전달 주셔요</div>
+<div class="rp"><span class="sender">조강진</span><span class="ts">3/19 09:41</span>
+음 오늘 과제를 리뷰하는 시간이 아니긴 합니다. 오늘 미팅 일단 혜린님까지해서 와주세요.</div>
+</div>
+</div>
+
+<!-- 쿠팡 구인규모 -->
+<div class="card" data-cat="영업" data-sub="mytag" data-id="s5">
+<div class="card-top"><div><span class="card-sender">박관우 → 엄명용</span><div class="card-ch">#prj-hirenow</div></div><div class="card-date">3/20 (목)</div></div>
+<div class="card-title">쿠팡 구인규모 &middot; 채대사 매출 감소 이유 질문 &middot; 팔로우업 - <a href="https://jobkorea-linker.slack.com/archives/C09B6UHPQMU/p1773997174832169" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 보기</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/20 17:59</span>
+@엄명용(AM엔터프라이즈영업팀) 명용님 감사합니다. 명용님 도와주신 덕분에 오늘 창준님과 미팅 잘 진행했습니다.
+
+다름이 아니라, 미팅 팔로우업으로 알아볼 사항이 있어서 추가적으로 도움 요청 드립니다.
+둘 다 창준님께서 알아보라고 한 사항이라서 도움 주시면 감사하겠습니다.
+
+다음주에 확인 후 답변 부탁드립니다. 주말 잘 보내십쇼 명용님! 항상 도움 주셔서 감사합니다!
+
+/질문사항/
+  &middot; (1) 쿠팡의 경우, 1년 총 구인규모가 어떤 수준이고 이 중에서 정말 급하게 단기간 내에 뽑아야 하는 구인규모가 어느정도일까요? (정확하지 않아도 되니, 대략적으로 쿠팡 담당자분께 여쭤보시고 알려주시면 감사하겠습니다)
+  &middot; (2) 채대사(생산) / 채대사(물류)의 경우, '23 --&gt; '24 --&gt; '25년 되면서 매출 감소폭이 심한데, 그 이유가 무엇인지요?
+[첨부: image.png]</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- ===== 데이터요청 TAB ===== -->
+<div class="tp" id="tab-데이터요청">
+<div class="st-wrap">
+<div class="st active" data-st="all" onclick="switchSub(this,'데이터요청')">전체</div>
+<div class="st" data-st="dm" onclick="switchSub(this,'데이터요청')">DM</div>
+<div class="st" data-st="etc" onclick="switchSub(this,'데이터요청')">기타</div>
+</div>
+<div class="card-list" id="list-데이터요청">
+
+<div class="card" data-cat="데이터요청" data-sub="dm" data-id="d1">
+<div class="card-top"><div><span class="card-sender">신건희</span><div class="card-ch">DM</div></div><div class="card-date">3/20 (목)</div></div>
+<div class="card-title">알바제의 서비스 데이터 분석 요청 &middot; ASAP 지원 &middot; JK인재검색 엑셀 - <a href="https://jobkorea.enterprise.slack.com/archives/D0A6TER60FM" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (2개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/20 16:35</span>
+건희님 안녕하세요. 오랜만에 인사드립니다. 오늘 아마도 창준님이 제가 '알바제의' 서비스 관련되서 데이터 요청을 하면 잘 대응해주라고 말씀 주실텐데요. 미리 까먹을까봐 필요한 데이터 사항을 먼저 말씀 드리고자 합니다.</div>
+<div class="rp"><span class="sender">신건희</span><span class="ts">3/20 16:43</span>
+관우님 안녕하세요! 알바몬 하이어에 더하여 알바몬 알바제의 서비스도 맡으실 수 있으시군요.
+필요하신 데이터 정의하신 내용 확인했습니다! 우선 못뽑는 데이터는 없습니다. ASAP 하게 지원해드리겠습니다</div>
+</div>
+</div>
+
+<div class="card" data-cat="데이터요청" data-sub="dm" data-id="d2">
+<div class="card-top"><div><span class="card-sender">배소정</span><div class="card-ch">#채대사-operation-team</div></div><div class="card-date">3/20 (목)</div></div>
+<div class="card-title">콜센터 지원 1회 이상 &amp; 알바제의 on 활성회원수 &rarr; 차주 월요일 - <a href="https://jobkorea-linker.slack.com/archives/C0A7AKSQM8B" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (4개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">박관우</span><span class="ts">3/19 15:59</span>
+@배소정(Enterprise Service팀) 소정님 데이터 리스트 하나 추가되서 5번 항목도 써주세요 ㅇㅇ
+[첨부: image.png]</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/19 16:24</span>
+@박관우(Enterprise Service팀) 님, 해당 지표는 관리자 엑셀의 주요지표에서 집계중인 데이터입니다.
+[첨부: image.png 2장]</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/19 16:25</span>
+메타엠, LB유세스 도급사들도 금주내에 관리자 엑셀에 추가할 예정입니다.</div>
+<div class="rp"><span class="sender">배소정</span><span class="ts">3/19 16:35</span>
+(기록용) 우리 공고 x, 전체 공고에 대한 히스토리 분석</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<!-- ===== 기타 TAB ===== -->
+<div class="tp" id="tab-기타">
+<div class="st-wrap">
+<div class="st active" data-st="all" onclick="switchSub(this,'기타')">전체</div>
+<div class="st" data-st="mention" onclick="switchSub(this,'기타')">나를 멘션</div>
+<div class="st" data-st="etc" onclick="switchSub(this,'기타')">기타</div>
+</div>
+<div class="card-list" id="list-기타">
+
+<!-- 황정주 -->
+<div class="card" data-cat="기타" data-sub="mention" data-id="e1">
+<div class="card-top"><div><span class="card-sender">황정주</span><div class="card-ch">#채대사-full-team</div></div><div class="card-date">3/19~3/22</div></div>
+<div class="card-title">인앱 타겟팅 공고추천 레이아웃 &middot; ABT 실험설계 &middot; 메타베이스 permission &middot; guardrail 지표 - <a href="https://jobkorea-linker.slack.com/archives/C0AKHCKMG4W/p1773839110180649" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 + 댓글 보기 (18개)</span>
+<div class="og-content">
+<div class="og"><span class="sender">황정주</span><span class="ts">3/19</span>
+[알바몬 하이어 공고 추천 레이아웃] @이혜린 미팅때 공유했던 노션 링크 공유. 댓글에 메타베이스 링크도 넣어놨습니다. 지원 전 지원 수 분포는 의심해야하는 데이터!</div>
+<div class="rp"><span class="sender">황정주</span><span class="ts">3/19</span>
+이어서 23일까지 abt 실험 설계랑 시안 공유드릴게용</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/19</span>
+@황정주 @이혜린 정주님이 오너십 갖고 진행해주시되, 노션 확인하면서 double-check해주시면 감사하겠습니다</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/19</span>
+참고로, 하이어 CRM off 사용자 대상 수신동의 on시키는 캠페인은 저와 혜린님이 그로스마케팅팀과 논의하여 진행할 예정입니다</div>
+<div class="rp"><span class="sender">황정주</span><span class="ts">3/19</span>
+링크 들어가면 세개가 있어서 헷갈리는데 캠페인은 은서님이랑 그마팀에서 진행하는거면 저는 입앱 타킷팅 기획 초안 이부분을 보면 되는거죠??</div>
+<div class="rp"><span class="sender">정은서</span><span class="ts">3/19</span>
+넵 맞습니당!</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/19</span>
+trigger point부분을 제일 많이 참고해주시면 좋겠습니다. &amp; 고객 too much 귀찮음 보호하는 부분이랑 ㅇㅇ</div>
+<div class="rp"><span class="sender">박진주</span><span class="ts">3/19</span>
+@황정주 님 메타베이스 permission error 나용 저희 접근 권한이 없대용</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/19</span>
+저두용ㅋㅋ</div>
+<div class="rp"><span class="sender">황정주</span><span class="ts">3/19</span>
+ㅋㅋㅋㅋ다시 확인해볼게유</div>
+<div class="rp"><span class="sender">이혜린</span><span class="ts">3/19</span>
+정확하게는, 대시보드 조회 권한은 있는데 내부 데이터는 저희가 조회할 수 없는 폴더에 있는 듯합니다</div>
+<div class="rp"><span class="sender">황정주</span><span class="ts">3/20</span>
+(메타베이스 링크 재공유) 확인plz</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+정주님, 아래는 제가 다른 PO분이랑 인앱 타겟팅 하면서 협의할 부분이 있어서 간략버전으로 대충 초간단 PRD적은건데, 정말 참고차원에서 공유합니다 (노션 링크)</div>
+<div class="rp"><span class="sender">황정주</span><span class="ts">3/20 14:03</span>
+@박관우 작성해주신거 확인하고 있는데, 인앱 타겟팅에서 메트릭 부분은 그러면 관우님이 협의해서 확정을 해주시는걸까용??</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+이거 메트릭 부분 정주님이 하시면 됩니다. 참고용이고, 저는 가드레일 지표만 다른 부서와 협의(승호님이 부탁하셔서) 한 겁니다. 가드레일 지표도 comprehensive하게 넓게 생각하셔도 됩니다!</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+공고추천만 &lt;&lt;&lt; 헷갈리지 않게 기록용!</div>
+<div class="rp"><span class="sender">박관우</span><span class="ts">3/20</span>
+넵 헷갈리시면 편히 물어봐주세요!</div>
+</div>
+</div>
+
+<!-- 주호연 -->
+<div class="card" data-cat="기타" data-sub="mention" data-id="e2">
+<div class="card-top"><div><span class="card-sender">주호연</span><div class="card-ch">#wg-전략추진실</div></div><div class="card-date">3/20 (목) 10:45</div></div>
+<div class="card-title">M365 이메일 답장 대기중 &middot; reddit에서도 답장 안 하기로 유명 &middot; 채팅으로 재촉 중 - <a href="https://jobkorea-linker.slack.com/archives/C09L1LBK1GD/p1773971147658889" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 보기</span>
+<div class="og-content">
+<div class="og"><span class="sender">주호연</span><span class="ts">3/20 10:45</span>
+@박관우 님, 현재 이메일 답장을 기다리고 있습니다. 제 이메일 계정과 eaglestrategy 모두 도착하지 않아 reddit에도 들어가봤는데 답장을 안 하기로 유명한 것 같아서 채팅으로 계속 재촉하면서 기다리는 중입니다!</div>
+</div>
+</div>
+
+<!-- 인프라보안 -->
+<div class="card" data-cat="기타" data-sub="etc" data-id="e3">
+<div class="card-top"><div><span class="card-sender">인프라보안 BOT</span><div class="card-ch">#support-인프라보안</div></div><div class="card-date">3/22 (토) 15:16</div></div>
+<div class="card-title">정보보안솔루션 정책 점검 &mdash; 클로드&harr;노션 MCP 연결 관련 Integration 등록 문의 - <a href="https://jobkorea-linker.slack.com/archives/C08DHGKJ29M/p1774160163851449" target="_blank">원문↗</a></div>
+<div class="card-actions"><button class="btn-done" onclick="markDone(this)">✓ 완료</button><button class="btn-prog" onclick="markProg(this)">⏳ 처리중</button></div>
+<span class="og-toggle" onclick="toggleOg(this)">▶ 원문 보기</span>
+<div class="og-content">
+<div class="og"><span class="sender">인프라보안 BOT</span><span class="ts">3/22 15:16</span>
+@박관우 님께서 "정보보안솔루션 정책 점검(변경)" 업무를 등록하셨습니다.
+클로드-노션 연결해서 쓰고자 하는데요. 노션과 클로드간 MCP로 연결이 되었는데, 하기 페이지는 특징적으로 연결이 안된다고 나오더라구요. Integration에 등록을 하라고 하는데, 방법을 모르겠습니다.</div>
+</div>
+</div>
+
+</div>
+</div>
+
+<script>
+var state={};
+function loadState(){try{var s=localStorage.getItem('dash-v5');if(s)return JSON.parse(s);}catch(e){}return {};}
+function saveState(){try{localStorage.setItem('dash-v5',JSON.stringify(state));}catch(e){}}
+(function init(){
+ state=loadState();
+ document.querySelectorAll('.card').forEach(function(c){
+  var id=c.dataset.id;
+  if(state[id]==='done'){c.classList.add('done');ensureUndoBtn(c);}
+  if(state[id]==='prog'){var b=c.querySelector('.btn-prog');if(b){b.style.background='#7a6020';b.textContent='\u23F3 \uCC98\uB9AC\uC911 \u2713';}}
+ });
+ updateAllBadges();
+})();
+function switchMain(el){
+ document.querySelectorAll('.mt').forEach(function(t){t.classList.remove('active');});
+ el.classList.add('active');
+ var tab=el.dataset.tab;
+ document.querySelectorAll('.tp').forEach(function(p){p.classList.remove('active');});
+ document.getElementById('tab-'+tab).classList.add('active');
+ var sw=document.querySelector('#tab-'+tab+' .st-wrap');
+ if(sw){sw.querySelectorAll('.st').forEach(function(s){s.classList.remove('active');});var f=sw.querySelector('.st[data-st="all"]');if(f)f.classList.add('active');}
+ filterCards(tab,'all');
+}
+function switchSub(el,mt){
+ el.parentElement.querySelectorAll('.st').forEach(function(s){s.classList.remove('active');});
+ el.classList.add('active');
+ filterCards(mt,el.dataset.st);
+}
+function filterCards(mt,sf){
+ var list=document.getElementById('list-'+mt);if(!list)return;
+ list.querySelectorAll('.card').forEach(function(c){
+  var vis=(sf==='all'||c.dataset.sub===sf);
+  if(c.classList.contains('done')&&document.getElementById('hideDone').checked) vis=false;
+  c.style.display=vis?'':'none';
+ });
+}
+function toggleOg(el){
+ var ct=el.nextElementSibling;
+ if(!ct) return;
+ if(ct.classList.contains('show')){ct.classList.remove('show');el.textContent=el.textContent.replace('\u25BC','\u25B6');}
+ else{ct.classList.add('show');el.textContent=el.textContent.replace('\u25B6','\u25BC');}
+}
+function markDone(btn){
+ var card=btn.closest('.card'),id=card.dataset.id;
+ card.classList.add('done');state[id]='done';saveState();updateAllBadges();
+ ensureUndoBtn(card);
+ setTimeout(function(){if(document.getElementById('hideDone').checked)card.style.display='none';},300);
+}
+function undoDone(btn){
+ var card=btn.closest('.card'),id=card.dataset.id;
+ card.classList.remove('done');
+ card.style.display='';
+ delete state[id];saveState();updateAllBadges();
+ // 처리중 버튼 원래대로
+ var pb=card.querySelector('.btn-prog');
+ if(pb){pb.style.background='#5c4a1e';pb.textContent='\u23F3 \uCC98\uB9AC\uC911';}
+}
+function ensureUndoBtn(card){
+ if(card.querySelector('.btn-undo')) return;
+ var b=document.createElement('button');
+ b.className='btn-undo';b.textContent='\u21A9 \uB418\uB3CC\uB9AC\uAE30';
+ b.onclick=function(){undoDone(b);};
+ card.appendChild(b);
+}
+function markProg(btn){
+ var card=btn.closest('.card'),id=card.dataset.id;
+ if(state[id]==='done')card.classList.remove('done');
+ state[id]='prog';btn.style.background='#7a6020';btn.textContent='\u23F3 \uCC98\uB9AC\uC911 \u2713';saveState();updateAllBadges();
+}
+function toggleHideDone(){
+ var h=document.getElementById('hideDone').checked;
+ document.querySelectorAll('.card.done').forEach(function(c){c.style.display=h?'none':'';});
+ updateAllBadges();
+}
+function updateAllBadges(){
+ ['\uC81C\uD488','\uC6B4\uC601','\uC601\uC5C5','\uB370\uC774\uD130\uC694\uCCAD','\uAE30\uD0C0'].forEach(function(cat){
+  var list=document.getElementById('list-'+cat);if(!list)return;
+  var n=0;list.querySelectorAll('.card').forEach(function(c){if(state[c.dataset.id]!=='done')n++;});
+  var b=document.getElementById('badge-'+cat);if(b){b.textContent=n;b.style.display=n>0?'':'none';}
+ });
+}
+function triggerUpdate(){
+ var btn=document.getElementById('btnUpdate');
+ btn.classList.add('loading');
+ btn.innerHTML='<span class="spin">&#x21bb;</span> Updating...';
+ // Cowork 스케줄 태스크 트리거: claude:// 프로토콜 시도
+ var coworkUrl='claude://cowork/task/daily-slack-dashboard/run';
+ var win=window.open(coworkUrl,'_blank');
+ // 프로토콜 핸들러 실패 시 fallback
+ setTimeout(function(){
+  if(!win||win.closed){
+   // fallback: Cowork 앱 직접 열기 시도
+   window.location.href='claude://';
+  }
+  btn.classList.remove('loading');
+  btn.innerHTML='&#x21bb; Update';
+  // 안내 메시지
+  var msg=document.createElement('div');
+  msg.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#4a3f8a;color:#fff;padding:12px 20px;border-radius:12px;font-size:13px;z-index:9999;text-align:center;max-width:90%;box-shadow:0 4px 20px rgba(0,0,0,0.5)';
+  msg.innerHTML='Cowork \uc571\uc774 \uc5f4\ub838\uc2b5\ub2c8\ub2e4.<br><b>\u201c\uc2ac\ub799 \ub300\uc2dc\ubcf4\ub4dc \uc5c5\ub370\uc774\ud2b8\ud574\uc918\u201d</b> \ub77c\uace0 \uc785\ub825\ud558\uba74 \ucd5c\uc2e0\ud654\ub429\ub2c8\ub2e4.<br>\ub610\ub294 \uc2a4\ucf00\uc904 \ud0dc\uc2a4\ud06c\uc5d0\uc11c <b>Run now</b> \ud074\ub9ad!';
+  document.body.appendChild(msg);
+  setTimeout(function(){msg.style.opacity='0';msg.style.transition='opacity 0.5s';setTimeout(function(){msg.remove();},600);},5000);
+ },1500);
+}
+</script>
+<script>
+if('serviceWorker' in navigator){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('./sw.js').then(function(reg){
+      console.log('SW registered',reg.scope);
+    }).catch(function(err){
+      console.log('SW failed',err);
+    });
+  });
+}
+</script>
+</body>
+</html>
